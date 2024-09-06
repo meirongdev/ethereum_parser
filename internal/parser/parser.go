@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -34,6 +35,9 @@ type EthereumParser struct {
 	// The transactions for each address
 	transactions map[string][]Transaction
 	mutex        sync.Mutex
+	// closing channel is for elegent stop the go routine
+	stopChannel chan struct{}
+	doneChannel chan struct{}
 }
 
 func hexToInt(hexStr string) (int, error) {
@@ -51,6 +55,8 @@ func NewEthereumParser(api ethereum.EthereumAPI) *EthereumParser {
 		currentBlock: -1,
 		addresses:    make(map[string]struct{}),
 		transactions: make(map[string][]Transaction),
+		stopChannel:  make(chan struct{}),
+		doneChannel:  make(chan struct{}),
 	}
 }
 
@@ -81,39 +87,54 @@ func (p *EthereumParser) GetTransactions(address string) []Transaction {
 
 func (p *EthereumParser) Start() {
 	for {
-		log.Println("show me all the addresses")
-		for addr := range p.transactions {
-			log.Println(addr)
-		}
-
-		// Get the current block number
-		blockNumberStr, err := p.api.GetCurrentBlock()
-		if err != nil {
-			fmt.Println("Error getting current block", err)
-			continue
-		}
-		blockNumber, err := hexToInt(blockNumberStr)
-		if err != nil {
-			fmt.Println("Error converting block number", err)
-			continue
-		}
-		if blockNumber <= p.currentBlock {
-			continue
-		}
-		if p.currentBlock < 0 {
-			p.currentBlock = blockNumber - 1
-		}
-		for i := p.currentBlock + 1; i <= blockNumber; i++ {
-			err := p.processBlock(i)
-			if err != nil {
-				log.Println("Error processing block", i, err)
-				break
-			}
-			p.currentBlock = i
+		select {
+		case <-p.stopChannel:
+			p.doneChannel <- struct{}{}
+			return
+		default:
+			// Get the current block number
 			// To avoid 429 error
-			time.Sleep(time.Second * 30)
+			err := p.retrieveBlockDatas()
+			if err != nil {
+				log.Println("error retrieveBlockDatas %w", err)
+				time.Sleep(10 * time.Second)
+			}
 		}
 	}
+}
+
+func (p *EthereumParser) retrieveBlockDatas() error {
+	log.Println("show me all the addresses")
+	for addr := range p.transactions {
+		log.Println(addr)
+	}
+
+	blockNumberStr, err := p.api.GetCurrentBlock()
+	if err != nil {
+		return fmt.Errorf("error getting current block %w", err)
+	}
+	blockNumber, err := hexToInt(blockNumberStr)
+	if err != nil {
+		return fmt.Errorf("error converting block number %w", err)
+	}
+	if blockNumber <= p.currentBlock {
+		log.Printf("blockNumer %d is less or equals then currentBlock%d \n", blockNumber, p.currentBlock)
+		return nil
+	}
+	if p.currentBlock < 0 {
+		p.currentBlock = blockNumber - 1
+	}
+	log.Printf("have %d block to process\n", blockNumber-p.currentBlock)
+	for i := p.currentBlock + 1; i <= blockNumber; i++ {
+		err := p.processBlock(i)
+		if err != nil {
+			return fmt.Errorf("error proccing block %d %w", i, err)
+		}
+		p.currentBlock = i
+
+		time.Sleep(time.Second * 30)
+	}
+	return nil
 }
 
 func (p *EthereumParser) processBlock(blockNumber int) error {
@@ -170,4 +191,17 @@ func (p *EthereumParser) processBlock(blockNumber int) error {
 	}
 
 	return nil
+}
+
+func (p *EthereumParser) Stop() {
+	log.Println("Parser is closing")
+	close(p.stopChannel)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	select {
+	case <-ctx.Done():
+		log.Println("Stop timeout")
+	case <-p.doneChannel:
+		log.Println("Parser closed")
+	}
 }

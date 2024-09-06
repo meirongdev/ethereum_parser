@@ -1,9 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/meirongdev/ethereum_parser/internal/ethereum"
 	"github.com/meirongdev/ethereum_parser/internal/parser"
@@ -14,12 +20,16 @@ type Response struct {
 }
 
 func main() {
+	var wg sync.WaitGroup
+
 	eAPI := ethereum.NewEthereumAPI()
 	eParser := parser.NewEthereumParser(eAPI)
 	go eParser.Start()
 
+	mux := http.NewServeMux()
+
 	// get the latest block number
-	http.HandleFunc("/currentBlock", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/currentBlock", func(w http.ResponseWriter, r *http.Request) {
 		blockNumber := eParser.GetCurrentBlock()
 		response := Response{
 			Data: struct {
@@ -35,7 +45,7 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/subscribe", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/subscribe", func(w http.ResponseWriter, r *http.Request) {
 		address := r.URL.Query().Get("address")
 		if address == "" {
 			http.Error(w, "Address is required", http.StatusBadRequest)
@@ -60,7 +70,7 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/transactions", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/transactions", func(w http.ResponseWriter, r *http.Request) {
 		address := r.URL.Query().Get("address")
 		if address == "" {
 			http.Error(w, "Address is required", http.StatusBadRequest)
@@ -81,6 +91,38 @@ func main() {
 		}
 	})
 
+	closeCh := make(chan struct{})
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  15 * time.Second,
+	}
+	wg.Add(1)
+	server.RegisterOnShutdown(func() {
+		defer wg.Done()
+		eParser.Stop()
+	})
 	log.Println("Server started at :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+		<-sigChan
+		log.Println("Received stop signal, shutting down...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Fatalf("Server forced to shutdown: %v", err)
+		}
+		close(closeCh)
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("HTTP server ListenAndServe: %v", err)
+	}
+	<-closeCh
+	log.Println("Server shutdown finished")
+	wg.Wait()
+	log.Println("Clear all resources")
 }
