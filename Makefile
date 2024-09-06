@@ -9,7 +9,7 @@ build:
 	go build -o $(BIN)/$(BINARY_NAME) $(MAIN_FILE)
 test:
 	@echo "Running tests..."
-	go test ./...
+	go test -v -race ./...
 
 # Lint command
 lint: install-lint
