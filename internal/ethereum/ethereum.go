@@ -18,15 +18,20 @@ type EthereumAPI interface {
 }
 
 type ethereumAPI struct {
+	client *http.Client
 }
 
 func NewEthereumAPI() EthereumAPI {
-	return &ethereumAPI{}
+	return &ethereumAPI{
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
 }
 
 func (e *ethereumAPI) GetCurrentBlock() (string, error) {
 	reqBody := fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":"%s"}`, generateID())
-	resp, err := http.Post(ethNodeURL, "application/json", strings.NewReader(reqBody))
+	resp, err := e.client.Post(ethNodeURL, "application/json", strings.NewReader(reqBody))
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +53,7 @@ func (e *ethereumAPI) GetTransactions(blockNumber string) ([]interface{}, error)
 	// curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x1b4", true],"id":1}'
 	var txList []interface{}
 	reqBody := fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["%s", true],"id":"%s"}`, blockNumber, generateID())
-	resp, err := http.Post(ethNodeURL, "application/json", strings.NewReader(reqBody))
+	resp, err := e.client.Post(ethNodeURL, "application/json", strings.NewReader(reqBody))
 	if err != nil {
 		return txList, err
 	}
