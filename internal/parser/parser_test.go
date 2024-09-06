@@ -100,60 +100,65 @@ func TestSubscribe(t *testing.T) {
 func TestGetTransactions(t *testing.T) {
 	tests := []struct {
 		name         string
-		address      string
+		addresses    map[string]struct{}
 		transactions map[string][]Transaction
+		queryAddress string
 		expected     []Transaction
 	}{
 		{
-			name:    "No transactions for address",
-			address: "0x123",
-			transactions: map[string][]Transaction{
-				"0x456": {
-					{Hash: "0x1", From: "0x456", To: "0x789", Value: 100, BlockNumber: 1},
-				},
+			name: "Address not subscribed",
+			addresses: map[string]struct{}{
+				"0x123": {},
 			},
-			expected: []Transaction{},
-		},
-		{
-			name:    "Single transaction for address",
-			address: "0x123",
 			transactions: map[string][]Transaction{
 				"0x123": {
-					{Hash: "0x1", From: "0x123", To: "0x456", Value: 100, BlockNumber: 1},
+					{Hash: "0xabc", From: "0x123", To: "0x456", Value: "100", BlockNumber: 1},
 				},
 			},
+			queryAddress: "0x789",
+			expected:     []Transaction{},
+		},
+		{
+			name: "Address subscribed with transactions",
+			addresses: map[string]struct{}{
+				"0x123": {},
+			},
+			transactions: map[string][]Transaction{
+				"0x123": {
+					{Hash: "0xabc", From: "0x123", To: "0x456", Value: "100", BlockNumber: 1},
+					{Hash: "0xdef", From: "0x123", To: "0x789", Value: "200", BlockNumber: 2},
+				},
+			},
+			queryAddress: "0x123",
 			expected: []Transaction{
-				{Hash: "0x1", From: "0x123", To: "0x456", Value: 100, BlockNumber: 1},
+				{Hash: "0xabc", From: "0x123", To: "0x456", Value: "100", BlockNumber: 1},
+				{Hash: "0xdef", From: "0x123", To: "0x789", Value: "200", BlockNumber: 2},
 			},
 		},
 		{
-			name:    "Multiple transactions for address",
-			address: "0x123",
-			transactions: map[string][]Transaction{
-				"0x123": {
-					{Hash: "0x1", From: "0x123", To: "0x456", Value: 100, BlockNumber: 1},
-					{Hash: "0x2", From: "0x789", To: "0x123", Value: 200, BlockNumber: 2},
-				},
+			name: "Address subscribed with no transactions",
+			addresses: map[string]struct{}{
+				"0x123": {},
 			},
-			expected: []Transaction{
-				{Hash: "0x1", From: "0x123", To: "0x456", Value: 100, BlockNumber: 1},
-				{Hash: "0x2", From: "0x789", To: "0x123", Value: 200, BlockNumber: 2},
-			},
+			transactions: map[string][]Transaction{},
+			queryAddress: "0x123",
+			expected:     []Transaction{},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			parser := &EthereumParser{
+				addresses:    test.addresses,
 				transactions: test.transactions,
 			}
-			result := parser.GetTransactions(test.address)
+			result := parser.GetTransactions(test.queryAddress)
 			if len(result) != len(test.expected) {
-				t.Errorf("GetTransactions(%s) length = %d, expected %d", test.address, len(result), len(test.expected))
+				t.Errorf("GetTransactions(%s) = %v, expected %v", test.queryAddress, result, test.expected)
 			}
 			for i, tx := range result {
 				if tx != test.expected[i] {
-					t.Errorf("GetTransactions(%s)[%d] = %v, expected %v", test.address, i, tx, test.expected[i])
+					t.Errorf("GetTransactions(%s)[%d] = %v, expected %v", test.queryAddress, i, tx, test.expected[i])
 				}
 			}
 		})

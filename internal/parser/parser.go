@@ -13,7 +13,7 @@ type Transaction struct {
 	Hash        string
 	From        string
 	To          string
-	Value       uint64
+	Value       string
 	BlockNumber int
 }
 
@@ -38,15 +38,6 @@ type EthereumParser struct {
 
 func hexToInt(hexStr string) (int, error) {
 	var result int //0x11c37937e08000
-	_, err := fmt.Sscanf(hexStr, "0x%x", &result)
-	if err != nil {
-		return 0, err
-	}
-	return result, nil
-}
-
-func hexToUint64(hexStr string) (uint64, error) {
-	var result uint64
 	_, err := fmt.Sscanf(hexStr, "0x%x", &result)
 	if err != nil {
 		return 0, err
@@ -82,6 +73,9 @@ func (p *EthereumParser) Subscribe(address string) bool {
 func (p *EthereumParser) GetTransactions(address string) []Transaction {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+	if _, exists := p.addresses[address]; !exists {
+		return []Transaction{}
+	}
 	return p.transactions[address]
 }
 
@@ -157,16 +151,12 @@ func (p *EthereumParser) processBlock(blockNumber int) error {
 			continue
 		}
 
-		valueStr, ok := txMap["value"].(string)
+		value, ok := txMap["value"].(string)
 		if !ok {
 			log.Printf("Error getting value for transaction %s %v", hash, txMap["value"])
 			continue
 		}
-		value, err := hexToUint64(valueStr)
-		if err != nil {
-			log.Printf("Error converting value for transaction %s %v", hash, valueStr)
-			continue
-		}
+
 		// Check if the address is involved in the transaction (either as sender or receiver)
 		transaction := Transaction{
 			Hash:        hash,
