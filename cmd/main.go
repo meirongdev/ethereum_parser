@@ -23,7 +23,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	eAPI := ethereum.NewEthereumAPI()
-	eParser := parser.NewEthereumParser(eAPI)
+	eParser := parser.NewEthereumParser(eAPI, parser.WithWaitTime(30*time.Second))
 	go eParser.Start()
 
 	mux := http.NewServeMux()

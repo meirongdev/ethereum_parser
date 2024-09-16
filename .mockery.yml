@@ -1,0 +1,7 @@
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+mockname: "{{.InterfaceName}}"
+packages:
+  github.com/meirongdev/ethereum_parser/internal/ethereum:
+    config:
+      all: true

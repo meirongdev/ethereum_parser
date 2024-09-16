@@ -18,7 +18,26 @@ notify about any incoming/outgoing transactions.
 
 ## Howto
 
-Run app
+### Test
+
+```bash
+make test
+```
+
+### Build
+
+```bash
+make build
+```
+
+### Lint
+
+```bash
+make lint
+```
+
+
+### Run app
 
 ```bash
 make run
@@ -30,5 +49,5 @@ We can pickup an address from the logs and query the transactions for that addre
 
 ## TODO
 
-- [ ] Use Mockery to mock the api interface and test the processBlock method in the `parser.go`
+- [x] Use Mockery to mock the api interface and test the processBlock method in the `parser.go`
 - [ ] Now Store all the transactions in the memory locally and consider to store only subscribed addresses transactions

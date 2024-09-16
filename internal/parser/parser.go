@@ -38,6 +38,15 @@ type EthereumParser struct {
 	// closing channel is for elegent stop the go routine
 	stopChannel chan struct{}
 	doneChannel chan struct{}
+	waitTime    time.Duration
+}
+
+type Option func(*EthereumParser)
+
+func WithWaitTime(duration time.Duration) Option {
+	return func(p *EthereumParser) {
+		p.waitTime = duration
+	}
 }
 
 func hexToInt(hexStr string) (int, error) {
@@ -49,8 +58,8 @@ func hexToInt(hexStr string) (int, error) {
 	return result, nil
 }
 
-func NewEthereumParser(api ethereum.API) *EthereumParser {
-	return &EthereumParser{
+func NewEthereumParser(api ethereum.API, options ...Option) *EthereumParser {
+	p := &EthereumParser{
 		api:          api,
 		currentBlock: -1,
 		addresses:    make(map[string]struct{}),
@@ -58,6 +67,10 @@ func NewEthereumParser(api ethereum.API) *EthereumParser {
 		stopChannel:  make(chan struct{}),
 		doneChannel:  make(chan struct{}),
 	}
+	for _, option := range options {
+		option(p)
+	}
+	return p
 }
 
 // GetCurrentBlock returns the last parsed block
@@ -97,7 +110,7 @@ func (p *EthereumParser) Start() {
 			err := p.retrieveBlockDatas()
 			if err != nil {
 				log.Println("error retrieveBlockDatas %w", err)
-				time.Sleep(10 * time.Second)
+				time.Sleep(p.waitTime)
 			}
 		}
 	}
@@ -132,7 +145,7 @@ func (p *EthereumParser) retrieveBlockDatas() error {
 		}
 		p.currentBlock = i
 
-		time.Sleep(time.Second * 30)
+		time.Sleep(p.waitTime)
 	}
 	return nil
 }
