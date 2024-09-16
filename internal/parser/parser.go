@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -81,6 +82,7 @@ func (p *EthereumParser) GetCurrentBlock() int {
 func (p *EthereumParser) Subscribe(address string) bool {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+	address = strings.ToLower(address)
 	if _, exists := p.addresses[address]; exists {
 		return false
 	}
@@ -92,6 +94,7 @@ func (p *EthereumParser) Subscribe(address string) bool {
 func (p *EthereumParser) GetTransactions(address string) []Transaction {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+	address = strings.ToLower(address)
 	if _, exists := p.addresses[address]; !exists {
 		return []Transaction{}
 	}
@@ -152,8 +155,6 @@ func (p *EthereumParser) retrieveBlockDatas() error {
 
 func (p *EthereumParser) processBlock(blockNumber int) error {
 	blockNumberStr := fmt.Sprintf("0x%x", blockNumber)
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 	log.Printf("Processing block %d", blockNumber)
 	txList, err := p.api.GetTransactions(blockNumberStr)
 	if err != nil {
@@ -199,6 +200,8 @@ func (p *EthereumParser) processBlock(blockNumber int) error {
 			Value:       value,
 			BlockNumber: blockNumber,
 		}
+		p.mutex.Lock()
+		defer p.mutex.Unlock()
 		p.transactions[from] = append(p.transactions[from], transaction)
 		p.transactions[to] = append(p.transactions[to], transaction)
 	}
