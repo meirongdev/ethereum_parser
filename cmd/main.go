@@ -29,7 +29,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// get the latest block number
-	mux.HandleFunc("/currentBlock", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/currentBlock", func(w http.ResponseWriter, _ *http.Request) {
 		blockNumber := eParser.GetCurrentBlock()
 		response := Response{
 			Data: struct {

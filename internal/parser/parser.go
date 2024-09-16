@@ -28,7 +28,7 @@ type Parser interface {
 }
 
 type EthereumParser struct {
-	api          ethereum.EthereumAPI
+	api          ethereum.API
 	currentBlock int
 	// The addresses which are being subscribed
 	addresses map[string]struct{}
@@ -49,7 +49,7 @@ func hexToInt(hexStr string) (int, error) {
 	return result, nil
 }
 
-func NewEthereumParser(api ethereum.EthereumAPI) *EthereumParser {
+func NewEthereumParser(api ethereum.API) *EthereumParser {
 	return &EthereumParser{
 		api:          api,
 		currentBlock: -1,

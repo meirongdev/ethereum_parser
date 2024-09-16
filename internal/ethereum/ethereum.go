@@ -12,7 +12,7 @@ var (
 	ethNodeURL = "https://cloudflare-eth.com"
 )
 
-type EthereumAPI interface {
+type API interface {
 	GetCurrentBlock() (string, error)
 	GetTransactions(blockNumber string) ([]interface{}, error)
 }
@@ -21,7 +21,7 @@ type ethereumAPI struct {
 	client *http.Client
 }
 
-func NewEthereumAPI() EthereumAPI {
+func NewEthereumAPI() API {
 	return &ethereumAPI{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
