@@ -13,7 +13,9 @@ var (
 )
 
 type API interface {
+	// GetCurrentBlock returns the current block number
 	GetCurrentBlock() (string, error)
+	// GetTransactions returns the list of transactions for the given block number
 	GetTransactions(blockNumber string) ([]interface{}, error)
 }
 
