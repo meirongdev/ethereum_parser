@@ -35,7 +35,7 @@ type EthereumParser struct {
 	addresses map[string]struct{}
 	// The transactions for each address
 	transactions map[string][]Transaction
-	mutex        sync.Mutex
+	mutex        sync.RWMutex
 	// closing channel is for elegent stop the go routine
 	stopChannel chan struct{}
 	doneChannel chan struct{}
@@ -92,8 +92,8 @@ func (p *EthereumParser) Subscribe(address string) bool {
 }
 
 func (p *EthereumParser) GetTransactions(address string) []Transaction {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
 	address = strings.ToLower(address)
 	if _, exists := p.addresses[address]; !exists {
 		return []Transaction{}
