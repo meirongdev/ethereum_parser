@@ -147,7 +147,6 @@ func (p *EthereumParser) retrieveBlockDatas() error {
 			return fmt.Errorf("error proccing block %d %w", i, err)
 		}
 		p.currentBlock = i
-
 		time.Sleep(p.waitTime)
 	}
 	return nil

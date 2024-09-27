@@ -50,4 +50,5 @@ We can pickup an address from the logs and query the transactions for that addre
 ## TODO
 
 - [x] Use Mockery to mock the api interface and test the processBlock method in the `parser.go`
-- [ ] Now Store all the transactions in the memory locally and consider to store only subscribed addresses transactions
+- [ ] Use a limiter to limit the number of concurrent requests to the Ethereum API to avoid 429 errors
+- [ ] Extract the memory store to a separate package and can be replaced with a persistent store in the future
